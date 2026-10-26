@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dataset Hub</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #fff; --text: #1d2330; --muted: #667085; --line: #e3e6eb;
+    --accent: #2f6f4f; --accent-soft: #e5f1ea; --danger: #b42318; --danger-soft: #fdecea;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171c; --panel: #1c2027; --text: #e6e8ec; --muted: #98a2b3; --line: #2c323c;
+      --accent: #6cc196; --accent-soft: #1f3329; --danger: #f97066; --danger-soft: #3a1d1b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 system-ui, -apple-system, Segoe UI, sans-serif; background: var(--bg); color: var(--text); }
+  header { display: flex; align-items: center; gap: 24px; padding: 12px 20px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 16px; margin: 0; }
+  nav button { background: none; border: 0; padding: 6px 10px; border-radius: 6px; color: var(--muted); font: inherit; cursor: pointer; }
+  nav button.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  main { padding: 20px; max-width: 1400px; margin: 0 auto; }
+  section[hidden] { display: none !important; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+  .grid2 { display: grid; grid-template-columns: minmax(280px, 1fr) 2fr; gap: 16px; align-items: start; }
+  @media (max-width: 860px) { .grid2 { grid-template-columns: 1fr; } }
+  h2 { font-size: 14px; margin: 0 0 12px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 3px; }
+  label .req { color: var(--danger); }
+  input, select, textarea { width: 100%; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text); font: inherit; }
+  textarea { min-height: 54px; }
+  input.invalid, select.invalid, textarea.invalid { border-color: var(--danger); background: var(--danger-soft); }
+  .hint { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .err { font-size: 11px; color: var(--danger); margin-top: 2px; }
+  button.primary, button.secondary { padding: 7px 14px; border-radius: 6px; font: inherit; cursor: pointer; border: 1px solid var(--accent); }
+  button.primary { background: var(--accent); color: #fff; }
+  button.secondary { background: none; color: var(--accent); }
+  a.button { display: inline-block; padding: 7px 14px; border-radius: 6px; border: 1px solid var(--accent); color: var(--accent); text-decoration: none; }
+  button:disabled { opacity: .5; cursor: default; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .browser { border: 1px solid var(--line); border-radius: 6px; max-height: 320px; overflow: auto; margin-top: 8px; }
+  .browser div { padding: 4px 10px; cursor: pointer; border-bottom: 1px solid var(--line); }
+  .browser div:hover { background: var(--accent-soft); }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; word-break: break-all; }
+  .pathpreview { padding: 10px; background: var(--accent-soft); border-radius: 6px; margin: 12px 0; }
+  .facts { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 12px; }
+  .facts dt { color: var(--muted); }
+  .facts dd { margin: 0; }
+  .formgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0 16px; }
+  .formgrid .wide { grid-column: 1 / -1; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; position: sticky; top: 0; background: var(--panel); }
+  tr.sel td { background: var(--accent-soft); }
+  .tablewrap { overflow: auto; max-height: 70vh; }
+  .chip { display: inline-block; padding: 0 6px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); font-size: 11px; margin: 1px; }
+  .msg { padding: 8px 12px; border-radius: 6px; margin-top: 12px; }
+  .msg.ok { background: var(--accent-soft); color: var(--accent); }
+  .msg.bad { background: var(--danger-soft); color: var(--danger); }
+  .bulk { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin-bottom: 12px; }
+  .bulk > * { width: auto; }
+  details summary { cursor: pointer; color: var(--accent); }
+  select[multiple] { min-height: 70px; }
+  .checks { max-height: 150px; overflow: auto; border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; background: var(--bg); }
+  label.check { display: flex; align-items: center; gap: 6px; margin: 2px 0; font-size: 13px; color: var(--text); cursor: pointer; }
+  label.check input { width: auto; margin: 0; }
+  .fclear { float: right; color: var(--accent); font-size: 11px; }
+  #activeFilters { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+  .fchip { font-size: 12px; padding: 1px 4px 1px 8px; background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .fchip button { border: 0; background: none; color: inherit; cursor: pointer; font: inherit; padding: 0 2px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Dataset Hub</h1>
+  <nav>
+    <button data-tab="upload" class="active">Upload</button>
+    <button data-tab="catalog">Catalog</button>
+    <button data-tab="sensors">Sensors</button>
+  </nav>
+</header>
+<main>
+  <!-- ------------------------------------------------------------ upload -->
+  <section id="tab-upload" class="grid2">
+    <div class="card">
+      <h2>1 · Pick source folder</h2>
+      <div class="row">
+        <input id="src" class="mono" placeholder="/path/to/recording">
+        <button class="secondary" id="inspectBtn">Inspect</button>
+      </div>
+      <div class="browser" id="browser"></div>
+      <div id="facts"></div>
+    </div>
+    <div class="card">
+      <h2>2 · Metadata</h2>
+      <form id="uploadForm" class="formgrid"></form>
+      <div class="pathpreview">
+        <div class="hint">Will be stored at</div>
+        <div class="mono" id="pathPreview">fill the required fields…</div>
+      </div>
+      <div class="row">
+        <select id="mode" style="width:auto">
+          <option value="copy">copy (keep original)</option>
+          <option value="move">move</option>
+          <option value="register">register in place</option>
+        </select>
+        <button class="primary" id="uploadBtn" disabled>Upload dataset</button>
+      </div>
+      <div id="uploadMsg"></div>
+    </div>
+  </section>
+
+  <!-- ----------------------------------------------------------- catalog -->
+  <section id="tab-catalog" class="grid2" hidden>
+    <div class="card">
+      <h2>Filter</h2>
+      <label>Search (path, comment, topics)</label>
+      <input id="q">
+      <div id="activeFilters"></div>
+      <div id="filters"></div>
+      <div class="row" style="margin-top:12px">
+        <button class="secondary" id="resetFilters">Reset</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="bulk">
+        <strong id="count"></strong>
+        <span class="hint" id="selCount"></span>
+        <select id="bulkField"></select>
+        <input id="bulkValue" placeholder="new value">
+        <button class="primary" id="bulkBtn" disabled>Set for selected</button>
+        <button class="secondary" id="marinaBtn" hidden disabled>Push to marina</button>
+      </div>
+      <div class="tablewrap"><table id="table"></table></div>
+      <div id="bulkMsg"></div>
+      <div id="detail"></div>
+    </div>
+  </section>
+
+  <!-- ----------------------------------------------------------- sensors -->
+  <section id="tab-sensors" class="grid2" hidden>
+    <div class="card">
+      <h2>Register sensor</h2>
+      <form id="sensorForm">
+        <label>sensor_id <span class="req">*</span></label><input name="sensor_id" placeholder="ouster_os1_128_front">
+        <label>sensor_type <span class="req">*</span></label><input name="sensor_type" list="sensorTypes" placeholder="lidar">
+        <datalist id="sensorTypes"></datalist>
+        <label>model</label><input name="model">
+        <label>driver_version</label><input name="driver_version">
+        <label>comment</label><input name="comment">
+        <div style="margin-top:12px"><button class="primary">Save</button></div>
+      </form>
+      <div id="sensorMsg"></div>
+    </div>
+    <div class="card"><table id="sensorTable"></table></div>
+  </section>
+</main>
+
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let SCHEMA = null, ROWS = [], SELECTED = new Set();
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, {headers: {"Content-Type": "application/json"}, ...opts,
+                               body: opts.body ? JSON.stringify(opts.body) : undefined});
+  const data = await r.json();
+  if (!r.ok) throw Object.assign(new Error(data.error || r.statusText), {data});
+  return data;
+}
+function msg(el, text, ok) { el.innerHTML = `<div class="msg ${ok ? "ok" : "bad"}">${esc(text)}</div>`; }
+function fmtBytes(b) { if (b == null) return ""; const u = ["B","KB","MB","GB","TB"]; let i = 0; while (b >= 1024 && i < 4) { b /= 1024; i++; } return b.toFixed(i ? 1 : 0) + " " + u[i]; }
+function fmtDur(s) { if (s == null) return ""; s = Math.round(s); return s >= 3600 ? `${(s/3600).toFixed(1)} h` : s >= 60 ? `${Math.floor(s/60)}m ${s%60}s` : `${s}s`; }
+
+// --------------------------------------------------------------------- tabs
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("nav button").forEach(x => x.classList.toggle("active", x === b));
+  document.querySelectorAll("main > section").forEach(s => s.hidden = s.id !== "tab-" + b.dataset.tab);
+  if (b.dataset.tab === "catalog") loadCatalog();
+});
+
+async function loadSchema() {
+  SCHEMA = await api("/api/schema");
+  buildUploadForm(); buildFilters(); buildBulkField(); renderSensors();
+  $("#marinaBtn").hidden = !SCHEMA.marina;
+}
+
+// ------------------------------------------------------------------- upload
+function fieldInput(f, value) {
+  const id = "f_" + f.name;
+  if (f.name === "sensors") {
+    const opts = SCHEMA.sensors.map(s => `<option value="${esc(s.sensor_id)}">${esc(s.sensor_id)} (${esc(s.sensor_type)})</option>`).join("");
+    return `<select id="${id}" name="${f.name}" multiple>${opts}</select>`;
+  }
+  if (f.type === "bool") return `<select id="${id}" name="${f.name}"><option value="">unknown</option><option value="true">yes</option><option value="false">no</option></select>`;
+  if (f.type === "date") return `<input id="${id}" name="${f.name}" type="date">`;
+  if (f.type === "float") return `<input id="${id}" name="${f.name}" type="number" step="any">`;
+  if (f.type === "json" || f.name === "comment") return `<textarea id="${id}" name="${f.name}"></textarea>`;
+  const list = f.suggest ? ` list="dl_${f.name}"` : "";
+  const dl = f.suggest ? `<datalist id="dl_${f.name}">${(SCHEMA.values[f.name] || []).map(v => `<option value="${esc(v)}">`).join("")}</datalist>` : "";
+  return `<input id="${id}" name="${f.name}"${list} autocomplete="off">${dl}`;
+}
+
+function buildUploadForm() {
+  $("#uploadForm").innerHTML = SCHEMA.fields.map(f => `
+    <div class="${f.type === "json" || f.name === "comment" || f.name === "sensors" ? "wide" : ""}">
+      <label for="f_${f.name}">${esc(f.label)} ${f.required ? '<span class="req">*</span>' : ""}</label>
+      ${fieldInput(f)}
+      ${f.help ? `<div class="hint">${esc(f.help)}</div>` : ""}
+      <div class="err" id="e_${f.name}"></div>
+    </div>`).join("");
+  $("#uploadForm").addEventListener("input", previewPath);
+  if (!SCHEMA.sensors.length) $("#f_sensors").outerHTML = `<div class="hint">No sensors registered yet — add them in the Sensors tab.</div><select id="f_sensors" name="sensors" multiple hidden></select>`;
+}
+
+function readForm() {
+  const meta = {};
+  for (const f of SCHEMA.fields) {
+    const el = $("#f_" + f.name);
+    if (!el) continue;
+    if (el.multiple) meta[f.name] = [...el.selectedOptions].map(o => o.value);
+    else if (el.value !== "") meta[f.name] = el.value;
+  }
+  return meta;
+}
+
+function setForm(values) {
+  for (const [k, v] of Object.entries(values)) {
+    const el = $("#f_" + k);
+    if (!el || v == null) continue;
+    if (el.multiple) [...el.options].forEach(o => o.selected = (v || []).includes(o.value));
+    else el.value = typeof v === "object" ? JSON.stringify(v) : String(v);
+  }
+}
+
+function showErrors(errors = {}) {
+  for (const f of SCHEMA.fields) {
+    $("#e_" + f.name).textContent = errors[f.name] || "";
+    $("#f_" + f.name)?.classList.toggle("invalid", !!errors[f.name]);
+  }
+}
+
+let previewTimer;
+function previewPath() {
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(async () => {
+    const r = await api("/api/preview_path", {method: "POST", body: {meta: readForm()}});
+    $("#pathPreview").textContent = r.path || "missing: " + Object.keys(r.missing).join(", ");
+    $("#uploadBtn").disabled = !r.path || !$("#src").value;
+  }, 200);
+}
+
+async function browse(path) {
+  try {
+    const r = await api("/api/browse?path=" + encodeURIComponent(path || ""));
+    $("#src").value = r.path;
+    $("#browser").innerHTML = `<div data-p="${esc(r.parent)}">⬆ ..</div>` +
+      r.dirs.map(d => `<div data-p="${esc(r.path + "/" + d)}">📁 ${esc(d)}</div>`).join("");
+    $("#browser").querySelectorAll("div").forEach(el => el.onclick = () => browse(el.dataset.p));
+  } catch (e) { msg($("#facts"), e.message, false); }
+}
+
+$("#inspectBtn").onclick = async () => {
+  try {
+    const r = await api("/api/inspect", {method: "POST", body: {source: $("#src").value}});
+    const i = r.info;
+    $("#facts").innerHTML = `<h2 style="margin-top:16px">Detected</h2><dl class="facts">
+      <dt>bags</dt><dd>${i.bag_count}</dd><dt>format</dt><dd>${esc(i.storage_format)}</dd>
+      <dt>size</dt><dd>${fmtBytes(i.size_bytes)} (${i.file_count} files)</dd>
+      <dt>length</dt><dd>${fmtDur(i.length_s)}</dd><dt>date</dt><dd>${esc(i.date)}</dd>
+      <dt>GPS</dt><dd>${i.has_gps == null ? "?" : i.has_gps ? "yes" : "no"}</dd></dl>
+      <details><summary>${i.topics.length} topics</summary><div class="mono">${i.topics.map(t => `${esc(t.name)} <span class="hint">${esc(t.type)} · ${t.count}</span>`).join("<br>")}</div></details>`;
+    if (!i.bag_count) msg($("#uploadMsg"), "No rosbag/mcap found in this folder.", false);
+    setForm(r.prefill); previewPath();
+  } catch (e) { msg($("#facts"), e.message, false); }
+};
+
+$("#uploadBtn").onclick = async () => {
+  $("#uploadBtn").disabled = true; showErrors();
+  msg($("#uploadMsg"), "Uploading… (large datasets take a while to copy)", true);
+  try {
+    const rec = await api("/api/datasets", {method: "POST", body: {source: $("#src").value, meta: readForm(), mode: $("#mode").value}});
+    msg($("#uploadMsg"), `Stored as ${rec.dataset_id} at ${rec.path}`, true);
+    SCHEMA = {...SCHEMA, ...(await api("/api/schema"))};
+  } catch (e) {
+    if (e.data?.fields) showErrors(e.data.fields);
+    msg($("#uploadMsg"), e.message, false);
+  } finally { $("#uploadBtn").disabled = false; }
+};
+
+// ------------------------------------------------------------------ catalog
+// Value filters are checkbox groups: OR within a field, AND across fields.
+function checkGroup(name, label, options, hint = "") {
+  if (!options.length) return "";
+  return `<div class="fgroup"><label>${esc(label)} <a href="#" class="fclear" data-clear="${name}" hidden>clear</a></label>
+    <div class="checks">${options.map(([v, text]) => `<label class="check"><input type="checkbox" data-f="${name}" value="${esc(v)}"> ${esc(text)}</label>`).join("")}</div>
+    ${hint ? `<div class="hint">${esc(hint)}</div>` : ""}</div>`;
+}
+
+function buildFilters(keep = {}) {
+  // ticked values stay listed even if no dataset has them anymore, so they can be unticked
+  const opts = k => [...new Set([...(SCHEMA.values[k] || []), ...(keep[k] || [])])].sort().map(v => [v, v]);
+  const parts = [];
+  for (const f of SCHEMA.fields) {
+    if (f.type === "date" || f.type === "float") {
+      const t = f.type === "date" ? "date" : "number";
+      parts.push(`<label>${esc(f.label)}</label><div class="row"><input type="${t}" data-f="${f.name}" data-r="min" placeholder="min"><input type="${t}" data-f="${f.name}" data-r="max" placeholder="max"></div>`);
+    } else if (f.type === "bool") {
+      parts.push(checkGroup(f.name, f.label, [["true", "yes"], ["false", "no"]]));
+    } else if (f.name === "sensors" || f.suggest) {
+      parts.push(checkGroup(f.name, f.label, opts(f.name),
+        f.name === "sensors" ? "datasets with all selected sensors" : ""));
+    }
+  }
+  parts.push(checkGroup("sensor_type", "Sensor type", opts("sensor_type")));
+  $("#filters").innerHTML = parts.join("");
+  $("#filters").oninput = $("#q").oninput = () => { renderActiveFilters(); clearTimeout(window._ft); window._ft = setTimeout(loadCatalog, 200); };
+  $("#filters").onclick = e => {
+    const k = e.target.dataset.clear; if (!k) return;
+    e.preventDefault(); clearFilter(k);
+  };
+}
+
+function readFilters() {
+  const f = {};
+  $("#filters").querySelectorAll("[data-f]").forEach(el => {
+    const k = el.dataset.f;
+    if (el.dataset.r) { if (el.value !== "") (f[k] ||= {})[el.dataset.r] = el.value; }
+    else if (el.type === "checkbox") { if (el.checked) (f[k] ||= []).push(el.value); }
+    else if (el.value !== "") f[k] = el.value;
+  });
+  return f;
+}
+
+function clearFilter(k, value) {
+  $("#filters").querySelectorAll(`[data-f="${k}"]`).forEach(el => {
+    if (el.type === "checkbox") { if (value === undefined || el.value === value) el.checked = false; }
+    else el.value = "";
+  });
+  loadCatalog();
+}
+
+// Chips for every active filter value; × deselects just that one.
+function renderActiveFilters() {
+  const f = readFilters(), label = k => SCHEMA.fields.find(x => x.name === k)?.label || (k === "sensor_type" ? "Sensor type" : k);
+  const chips = [];
+  for (const [k, v] of Object.entries(f)) {
+    if (Array.isArray(v)) v.forEach(x => chips.push([k, x, `${label(k)}: ${k === "has_gps" ? (x === "true" ? "yes" : "no") : x}`]));
+    else chips.push([k, undefined, `${label(k)}: ${v.min ?? "…"} – ${v.max ?? "…"}`]);
+  }
+  $("#activeFilters").innerHTML = chips.map(([k, x, text], i) =>
+    `<span class="chip fchip">${esc(text)} <button data-i="${i}" title="remove">×</button></span>`).join("");
+  $("#activeFilters").querySelectorAll("button").forEach(b => b.onclick = () => clearFilter(chips[b.dataset.i][0], chips[b.dataset.i][1]));
+  $("#filters").querySelectorAll("[data-clear]").forEach(a => a.hidden = !f[a.dataset.clear]);
+}
+
+$("#resetFilters").onclick = () => { $("#filters").querySelectorAll("input").forEach(el => el.type === "checkbox" ? el.checked = false : el.value = ""); $("#q").value = ""; loadCatalog(); };
+
+async function loadCatalog() {
+  if (!SCHEMA) return;
+  SCHEMA = {...SCHEMA, ...(await api("/api/schema"))};
+  const keep = readFilters();
+  buildFilters(keep);
+  // restore filter state after options were rebuilt
+  $("#filters").querySelectorAll("[data-f]").forEach(el => {
+    const v = keep[el.dataset.f]; if (v == null) return;
+    if (el.dataset.r) el.value = v[el.dataset.r] ?? "";
+    else if (el.type === "checkbox") el.checked = v.includes(el.value);
+    else el.value = v;
+  });
+  renderActiveFilters();
+  ROWS = await api("/api/datasets?filters=" + encodeURIComponent(JSON.stringify(readFilters())) + "&q=" + encodeURIComponent($("#q").value));
+  SELECTED = new Set([...SELECTED].filter(id => ROWS.some(r => r.dataset_id === id)));
+  renderTable();
+}
+
+function renderTable() {
+  $("#count").textContent = `${ROWS.length} datasets`;
+  const cols = ["date", "customer", "project", "robot", "site", "robot_task", "sensors", "has_gps", "length_s"];
+  const label = n => SCHEMA.fields.find(f => f.name === n)?.label || n;
+  $("#table").innerHTML = `<thead><tr><th><input type="checkbox" id="selAll"></th>${cols.map(c => `<th>${esc(label(c))}</th>`).join("")}<th>Size</th>${SCHEMA.marina ? "<th>marina</th>" : ""}</tr></thead><tbody>` +
+    ROWS.map(r => `<tr data-id="${r.dataset_id}" class="${SELECTED.has(r.dataset_id) ? "sel" : ""}">
+      <td><input type="checkbox" ${SELECTED.has(r.dataset_id) ? "checked" : ""}></td>
+      ${cols.map(c => `<td>${c === "sensors" ? r.sensors.map(s => `<span class="chip">${esc(s)}</span>`).join("") :
+        c === "has_gps" ? (r.has_gps == null ? "" : r.has_gps ? "✓" : "–") :
+        c === "length_s" ? fmtDur(r.length_s) : esc(r[c])}</td>`).join("")}
+      <td>${fmtBytes(r.size_bytes)}</td>${SCHEMA.marina ? `<td>${marinaState(r)}</td>` : ""}</tr>`).join("") + "</tbody>";
+  $("#selAll").checked = ROWS.length && SELECTED.size === ROWS.length;
+  $("#selAll").onchange = e => { SELECTED = new Set(e.target.checked ? ROWS.map(r => r.dataset_id) : []); renderTable(); };
+  $("#table").querySelectorAll("tbody tr").forEach(tr => {
+    tr.querySelector("input").onchange = e => { e.target.checked ? SELECTED.add(tr.dataset.id) : SELECTED.delete(tr.dataset.id); renderTable(); };
+    tr.onclick = e => { if (e.target.tagName !== "INPUT") showDetail(tr.dataset.id); };
+  });
+  $("#selCount").textContent = SELECTED.size ? `${SELECTED.size} selected` : "";
+  $("#bulkBtn").disabled = !SELECTED.size;
+  $("#marinaBtn").disabled = !SELECTED.size;
+}
+
+function marinaState(r) {
+  if (r.status === "marina_push_failed") return '<span style="color:var(--danger)" title="push failed, retry with Push to marina">failed</span>';
+  return r.marina_ref ? `<span title="${esc(r.marina_ref)}">✓</span>` : "–";
+}
+
+function showDetail(id) {
+  const r = ROWS.find(x => x.dataset_id === id);
+  $("#detail").innerHTML = `<h2 style="margin-top:20px">Dataset ${esc(id)}</h2><div id="preview"></div><dl class="facts">` +
+    [...SCHEMA.fields.map(f => [f.label, f.type === "json" && r[f.name] ? JSON.stringify(r[f.name]) : Array.isArray(r[f.name]) ? r[f.name].join(", ") : r[f.name]]),
+     ["Path", r.path], ["Original", r.source_path], ["Format", r.storage_format], ["Files", r.file_count],
+     ["marina", r.marina_ref], ["Status", r.status], ["Added", r.created_at]]
+    .map(([k, v]) => `<dt>${esc(k)}</dt><dd class="${k === "Path" || k === "Original" ? "mono" : ""}">${esc(v)}</dd>`).join("") +
+    `</dl><details><summary>${r.topics.length} topics</summary><div class="mono">${r.topics.map(t => `${esc(t.name)} <span class="hint">${esc(t.type)} · ${t.count}</span>`).join("<br>")}</div></details>`;
+  renderPreview(id);
+}
+
+// "Open in Foxglove": the viewer streams the bag from /files/ with range requests.
+async function renderPreview(id) {
+  const {files} = await api(`/api/datasets/${id}/files`);
+  if ($("#preview") === null || !$("#detail").textContent.includes(id)) return;  // detail changed meanwhile
+  // A viewer opens one kind at a time; split rosbag2 files are opened together.
+  const mcap = files.filter(f => f.endsWith(".mcap")), open = mcap.length ? mcap : files;
+  if (!open.length) { $("#preview").innerHTML = `<div class="hint">No .mcap or .bag file to preview (rosbag2 .db3 needs converting first).</div>`; return; }
+  const urls = open.map(f => `${location.origin}/files/${encodeURIComponent(id)}/${f.split("/").map(encodeURIComponent).join("/")}`);
+  const viewer = SCHEMA.viewer_url, sep = viewer.includes("?") ? "&" : "?";
+  const href = `${viewer}${sep}ds=remote-file&ds.url=${encodeURIComponent(urls.join(","))}`;
+  const name = /foxglove\.dev/.test(viewer) ? "Foxglove" : "viewer";
+  const lan = location.protocol === "http:" && !["127.0.0.1", "localhost", "[::1]"].includes(location.hostname) && viewer.startsWith("https:");
+  $("#preview").innerHTML = `<div class="row" style="margin-bottom:8px">
+      <a class="button secondary" href="${esc(href)}" target="_blank" rel="noopener">Open in ${name}</a>
+      <span class="hint">${open.length > 1 ? `${open.length} files` : esc(open[0])}</span></div>` +
+    (lan ? `<div class="hint">The hub is opened over plain HTTP on the LAN, so the HTTPS viewer can't load files from it (mixed content). Use 127.0.0.1 on the workstation, a self-hosted viewer (viewer_url) or TLS.</div>` : "");
+}
+
+function buildBulkField() {
+  $("#bulkField").innerHTML = SCHEMA.fields.filter(f => !["length_s"].includes(f.name))
+    .map(f => `<option value="${f.name}">${esc(f.label)}</option>`).join("");
+}
+
+$("#bulkBtn").onclick = async () => {
+  const field = $("#bulkField").value, value = $("#bulkValue").value;
+  const f = SCHEMA.fields.find(x => x.name === field);
+  if (!confirm(`Set "${f.label}" = "${value}" on ${SELECTED.size} datasets?` + (f.in_path ? "\nThis field is part of the folder path — the folders will be moved." : ""))) return;
+  try {
+    const r = await api("/api/bulk", {method: "POST", body: {ids: [...SELECTED], changes: {[field]: value}}});
+    msg($("#bulkMsg"), `Updated ${r.updated} datasets` + (r.marina_failed ? ` — marina push failed for ${r.marina_failed}` : ""), !r.marina_failed);
+    loadCatalog();
+  } catch (e) { msg($("#bulkMsg"), e.data?.fields ? Object.entries(e.data.fields).map(([k, v]) => `${k}: ${v}`).join("; ") : e.message, false); }
+};
+
+$("#marinaBtn").onclick = async () => {
+  if (!confirm(`Push ${SELECTED.size} datasets to marina registry "${SCHEMA.marina}"?\nAlready pushed, unchanged datasets are skipped.`)) return;
+  $("#marinaBtn").disabled = true;
+  msg($("#bulkMsg"), "Pushing…", true);
+  try {
+    const r = await api("/api/marina/sync", {method: "POST", body: {ids: [...SELECTED]}});
+    msg($("#bulkMsg"), r.failed.length ? `Push failed for ${r.failed.join(", ")} (see server log)` : `Pushed ${r.pushed} datasets`, !r.failed.length);
+    loadCatalog();
+  } catch (e) { msg($("#bulkMsg"), e.message, false); }
+};
+
+// ------------------------------------------------------------------ sensors
+function renderSensors() {
+  $("#sensorTable").innerHTML = `<thead><tr><th>sensor_id</th><th>type</th><th>model</th><th>driver</th><th>comment</th></tr></thead><tbody>` +
+    SCHEMA.sensors.map(s => `<tr><td class="mono">${esc(s.sensor_id)}</td><td>${esc(s.sensor_type)}</td><td>${esc(s.model)}</td><td>${esc(s.driver_version)}</td><td>${esc(s.comment)}</td></tr>`).join("") + "</tbody>";
+  $("#sensorTypes").innerHTML = (SCHEMA.values.sensor_type || []).map(v => `<option value="${esc(v)}">`).join("");
+}
+
+$("#sensorForm").onsubmit = async e => {
+  e.preventDefault();
+  try {
+    await api("/api/sensors", {method: "POST", body: Object.fromEntries(new FormData(e.target))});
+    msg($("#sensorMsg"), "Saved", true); e.target.reset();
+    await loadSchema();
+  } catch (err) { msg($("#sensorMsg"), err.message, false); }
+};
+
+loadSchema().then(() => browse(""));
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "_comment": "Copy to config.json and adapt. Relative paths are relative to this file.",
+  "storage_root": "./data/storage",
+  "db_path": "./data/catalog.sqlite",
+  "path_template": "{customer}/{project}/{robot}/{date}_{site}_{robot_task}_{dataset_id}",
+  "ingest_mode": "copy",
+  "marina_registry": null,
+  "marina_bin": "marina",
+  "viewer_url": "https://app.foxglove.dev/~/view",
+  "browse_roots": ["~", "./mock_nas"],
+  "host": "127.0.0.1",
+  "port": 8080
+}
