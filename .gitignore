@@ -5,3 +5,4 @@ data/
 venv/
 mock_nas/
 *.csv
+mock_nas_v2/
