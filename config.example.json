@@ -7,6 +7,9 @@
   "marina_registry": null,
   "marina_bin": "marina",
   "viewer_url": "https://app.foxglove.dev/~/view",
+  "github_org": "naturerobots",
+  "stack_repos": ["horti_nav_stack", "orchvine_nav_stack", "caro_stack", "toro_stack",
+                  "furo_stack", "fieldcobots_stack", "gnss_loc_stack"],
   "browse_roots": ["~", "./mock_nas"],
   "host": "127.0.0.1",
   "port": 8080

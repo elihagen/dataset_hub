@@ -12,6 +12,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 from .config import Config
 from .db import Catalog
+from .github import StackVersions
 from .ingest import bulk_update, ingest, marina_sync, suggest_metadata, target_path
 from .marina_backend import Marina
 from .schema import ValidationError, normalize, schema_json
@@ -36,6 +37,7 @@ class App:
         self.catalog = Catalog(cfg.db)
         self.lock = threading.Lock()
         self.marina = Marina(cfg.marina_bin, cfg.marina_registry) if cfg.marina_registry else None
+        self.stack_versions = StackVersions(cfg.github_org, cfg.stack_repos) if cfg.stack_repos else None
         v = urlparse(cfg.viewer_url)
         self.viewer_origin = f"{v.scheme}://{v.netloc}" if v.netloc else None
 
@@ -194,7 +196,12 @@ def make_handler(app: App):
                                  "storage_root": str(app.cfg.storage),
                                  "browse_roots": list(app.cfg.browse_roots),
                                  "marina": app.cfg.marina_registry if app.marina else None,
-                                 "viewer_url": app.cfg.viewer_url}
+                                 "viewer_url": app.cfg.viewer_url,
+                                 "github_org": app.cfg.github_org}
+            if method == "GET" and path == "/api/stack_versions":
+                if app.stack_versions is None:
+                    return 200, {"versions": [], "errors": {}}
+                return 200, app.stack_versions.fetch()
             if method == "GET" and path == "/api/datasets":
                 filters = json.loads(qs.get("filters") or "{}")
                 with app.lock:

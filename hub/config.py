@@ -25,6 +25,10 @@ class Config:
     # Viewer for the "Open in Foxglove" preview. Also a self-hosted Lichtblick,
     # e.g. "http://127.0.0.1:8081/". Only this origin may fetch files via /files/.
     viewer_url: str = "https://app.foxglove.dev/~/view"
+    # Stack repos whose tags are offered as stack_version ("<repo>@<tag>").
+    # Entries are repo names in github_org, or "owner/repo".
+    github_org: str = ""
+    stack_repos: tuple = ()
     # Folders the upload UI is allowed to browse for source data.
     browse_roots: tuple = (str(Path.home()),)
     host: str = "127.0.0.1"
@@ -51,7 +55,7 @@ def load(path: Optional[str] = None) -> Config:
                 continue
             if k not in known:
                 raise ValueError(f"unknown config key: {k}")
-            if k == "browse_roots":
+            if k in ("browse_roots", "stack_repos"):
                 v = tuple(v)
             setattr(cfg, k, v)
         # Relative paths in the config file are relative to the file itself.

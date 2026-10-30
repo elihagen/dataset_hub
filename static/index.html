@@ -161,7 +161,7 @@
 <script>
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-let SCHEMA = null, ROWS = [], SELECTED = new Set();
+let SCHEMA = null, ROWS = [], SELECTED = new Set(), STACK = [];
 
 async function api(path, opts = {}) {
   const r = await fetch(path, {headers: {"Content-Type": "application/json"}, ...opts,
@@ -185,6 +185,27 @@ async function loadSchema() {
   SCHEMA = await api("/api/schema");
   buildUploadForm(); buildFilters(); buildBulkField(); renderSensors();
   $("#marinaBtn").hidden = !SCHEMA.marina;
+  loadStackVersions();
+}
+
+// ------------------------------------------------------------ stack versions
+// stack_version is "<repo>@<tag or commit>"; tags come from the GitHub repos in the config.
+async function loadStackVersions() {
+  const r = await api("/api/stack_versions");
+  STACK = r.versions;
+  for (const [repo, err] of Object.entries(r.errors)) console.warn(`GitHub ${repo}: ${err}`);
+  const dl = $("#dl_stack_version"); if (!dl) return;
+  const known = new Set(STACK.map(v => v.value));
+  dl.innerHTML = STACK.map(v => `<option value="${esc(v.value)}">${esc(v.date ? "released " + v.date : "tag")}</option>`).join("") +
+    (SCHEMA.values.stack_version || []).filter(v => !known.has(v)).map(v => `<option value="${esc(v)}">`).join("");
+}
+
+function versionLink(v) {
+  const m = /^(?:([\w.-]+)\/)?([\w.-]+)@(\S+)$/.exec(v || "");
+  const owner = m && (m[1] || SCHEMA.github_org);
+  if (!owner) return esc(v);
+  const kind = /^[0-9a-f]{7,40}$/.test(m[3]) ? "commit" : "releases/tag";
+  return `<a href="https://github.com/${esc(owner)}/${esc(m[2])}/${kind}/${esc(m[3])}" target="_blank" rel="noopener">${esc(v)}</a>`;
 }
 
 // ------------------------------------------------------------------- upload
@@ -378,20 +399,20 @@ async function loadCatalog() {
 
 function renderTable() {
   $("#count").textContent = `${ROWS.length} datasets`;
-  const cols = ["date", "customer", "project", "robot", "site", "robot_task", "sensors", "has_gps", "length_s"];
+  const cols = ["date", "customer", "project", "robot", "site", "robot_task", "sensors", "has_gps", "length_s", "stack_version"];
   const label = n => SCHEMA.fields.find(f => f.name === n)?.label || n;
   $("#table").innerHTML = `<thead><tr><th><input type="checkbox" id="selAll"></th>${cols.map(c => `<th>${esc(label(c))}</th>`).join("")}<th>Size</th>${SCHEMA.marina ? "<th>marina</th>" : ""}</tr></thead><tbody>` +
     ROWS.map(r => `<tr data-id="${r.dataset_id}" class="${SELECTED.has(r.dataset_id) ? "sel" : ""}">
       <td><input type="checkbox" ${SELECTED.has(r.dataset_id) ? "checked" : ""}></td>
       ${cols.map(c => `<td>${c === "sensors" ? r.sensors.map(s => `<span class="chip">${esc(s)}</span>`).join("") :
         c === "has_gps" ? (r.has_gps == null ? "" : r.has_gps ? "✓" : "–") :
-        c === "length_s" ? fmtDur(r.length_s) : esc(r[c])}</td>`).join("")}
+        c === "length_s" ? fmtDur(r.length_s) : c === "stack_version" ? versionLink(r[c]) : esc(r[c])}</td>`).join("")}
       <td>${fmtBytes(r.size_bytes)}</td>${SCHEMA.marina ? `<td>${marinaState(r)}</td>` : ""}</tr>`).join("") + "</tbody>";
   $("#selAll").checked = ROWS.length && SELECTED.size === ROWS.length;
   $("#selAll").onchange = e => { SELECTED = new Set(e.target.checked ? ROWS.map(r => r.dataset_id) : []); renderTable(); };
   $("#table").querySelectorAll("tbody tr").forEach(tr => {
     tr.querySelector("input").onchange = e => { e.target.checked ? SELECTED.add(tr.dataset.id) : SELECTED.delete(tr.dataset.id); renderTable(); };
-    tr.onclick = e => { if (e.target.tagName !== "INPUT") showDetail(tr.dataset.id); };
+    tr.onclick = e => { if (!["INPUT", "A"].includes(e.target.tagName)) showDetail(tr.dataset.id); };
   });
   $("#selCount").textContent = SELECTED.size ? `${SELECTED.size} selected` : "";
   $("#bulkBtn").disabled = !SELECTED.size;
@@ -409,7 +430,7 @@ function showDetail(id) {
     [...SCHEMA.fields.map(f => [f.label, f.type === "json" && r[f.name] ? JSON.stringify(r[f.name]) : Array.isArray(r[f.name]) ? r[f.name].join(", ") : r[f.name]]),
      ["Path", r.path], ["Original", r.source_path], ["Format", r.storage_format], ["Files", r.file_count],
      ["marina", r.marina_ref], ["Status", r.status], ["Added", r.created_at]]
-    .map(([k, v]) => `<dt>${esc(k)}</dt><dd class="${k === "Path" || k === "Original" ? "mono" : ""}">${esc(v)}</dd>`).join("") +
+    .map(([k, v]) => `<dt>${esc(k)}</dt><dd class="${k === "Path" || k === "Original" ? "mono" : ""}">${k === "Stack version" ? versionLink(v) : esc(v)}</dd>`).join("") +
     `</dl><details><summary>${r.topics.length} topics</summary><div class="mono">${r.topics.map(t => `${esc(t.name)} <span class="hint">${esc(t.type)} · ${t.count}</span>`).join("<br>")}</div></details>`;
   renderPreview(id);
 }
@@ -435,6 +456,9 @@ async function renderPreview(id) {
 function buildBulkField() {
   $("#bulkField").innerHTML = SCHEMA.fields.filter(f => !["length_s"].includes(f.name))
     .map(f => `<option value="${f.name}">${esc(f.label)}</option>`).join("");
+  // suggestions for the value: the same datalist as the upload form field
+  $("#bulkField").onchange = () => $("#bulkValue").setAttribute("list", "dl_" + $("#bulkField").value);
+  $("#bulkField").onchange();
 }
 
 $("#bulkBtn").onclick = async () => {

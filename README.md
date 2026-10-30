@@ -62,6 +62,23 @@ sidecar are all generated from it.
 \* required. To add a field, append it to `FIELDS`. The DB column is added
 automatically on the next start.
 
+## Stack versions (GitHub)
+
+Every stack repo has its own version numbers, so `stack_version` is written as
+`<repo>@<tag or commit>`, e.g. `horti_nav_stack@v2.3.6` (or `owner/repo@ref`
+for repos outside `github_org`). List the repos in the config:
+
+```json
+"github_org": "naturerobots",
+"stack_repos": ["horti_nav_stack", "orchvine_nav_stack", "caro_stack"]
+```
+
+The upload form and bulk edit then suggest the tags of those repos (newest
+first, with release date), and the catalog links each version to its GitHub
+release/commit. The hub only reads tags/releases via the GitHub API, using
+`$GITHUB_TOKEN` or the GitHub CLI login (`gh auth login`); results are cached
+for 10 minutes. Values not in that form (e.g. old free text) are kept as is.
+
 ## Folder structure
 
 `path_template` in the config, default:

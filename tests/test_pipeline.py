@@ -18,6 +18,7 @@ from hub.config import Config  # noqa: E402
 from hub.db import Catalog  # noqa: E402
 from hub.ingest import SIDECAR, bulk_update, ingest, marina_pending, marina_sync, reindex  # noqa: E402
 from hub.legacy import import_csv, scan  # noqa: E402
+from hub.github import parse_version, version_url  # noqa: E402
 from hub.marina_backend import Marina  # noqa: E402
 from hub.schema import ValidationError  # noqa: E402
 import make_mock_datasets  # noqa: E402
@@ -228,6 +229,19 @@ class PipelineTest(unittest.TestCase):
             self.assertTrue(any(Path(rec["path"]).glob("*.mcap")), "push must not move the data away")
             listing = m._run(["list", "--remote", "--registry", "test", "--format", "json"])
             self.assertIn(rec["dataset_id"], listing)
+
+
+
+class StackVersionTest(unittest.TestCase):
+    def test_version_links(self):
+        self.assertEqual(parse_version("caro_stack@v1.1.2", "naturerobots"),
+                         ("naturerobots", "caro_stack", "v1.1.2"))
+        self.assertEqual(version_url("uos/marina@v0.3.0", "naturerobots"),
+                         "https://github.com/uos/marina/releases/tag/v0.3.0")
+        self.assertEqual(version_url("caro_stack@1a2b3c4d", "naturerobots"),
+                         "https://github.com/naturerobots/caro_stack/commit/1a2b3c4d")
+        self.assertIsNone(version_url("2.3.0", "naturerobots"))  # legacy free text stays as is
+        self.assertIsNone(version_url("caro_stack@v1", ""))      # no org configured
 
 
 if __name__ == "__main__":
