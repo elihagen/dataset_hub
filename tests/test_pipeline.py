@@ -2,6 +2,7 @@
 import csv
 import json
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -72,6 +73,69 @@ class PipelineTest(unittest.TestCase):
         # No NavSatFix topic -> no GPS.
         no_gps = bag_info.inspect(self.nas / "NR/field_tests/rosbag2_2026_05_04-13_31_38")
         self.assertFalse(no_gps["has_gps"])
+
+    def test_checks_pass_on_clean_bag(self):
+        for bag in self.bags:
+            self.assertEqual(bag_info.inspect(bag)["warnings"], [], bag)
+
+    def test_checks_flag_broken_data(self):
+        def broken(name):
+            d = Path(self.tmp.name) / name
+            shutil.copytree(self.vineyard_run(), d)
+            return d, d / "run1_0.mcap"
+
+        def issues(d):
+            return [(w["level"], w["message"]) for w in bag_info.inspect(d)["warnings"]]
+
+        d, f = broken("truncated")
+        f.write_bytes(f.read_bytes()[:-100])
+        self.assertIn("error", [lvl for lvl, _ in issues(d)])
+        self.assertTrue(any("truncated" in m for _, m in issues(d)))
+
+        d, f = broken("missing")
+        f.unlink()
+        self.assertTrue(any(lvl == "error" and "missing" in m for lvl, m in issues(d)))
+
+        d, f = broken("empty_file")
+        f.write_bytes(b"")
+        self.assertTrue(any(lvl == "error" and "empty" in m for lvl, m in issues(d)))
+
+        d, _ = broken("empty_topic")
+        meta = d / "metadata.yaml"
+        meta.write_text(meta.read_text().replace("message_count: 1500", "message_count: 0", 1))
+        self.assertTrue(any(lvl == "warning" and "/sensors/gps/fix" in m for lvl, m in issues(d)))
+
+        d, _ = broken("bad_clock")
+        meta = d / "metadata.yaml"
+        meta.write_text(re.sub(r"nanoseconds_since_epoch: \d+", "nanoseconds_since_epoch: 1000",
+                               meta.read_text()))
+        self.assertTrue(any(lvl == "warning" and "clock" in m for lvl, m in issues(d)))
+
+    def test_yaml_fallback_reads_converted_bags(self):
+        # `rosbags`-converted metadata: message_count first, QoS list between name and type.
+        text = ("rosbag2_bagfile_information:\n"
+                "  duration:\n    nanoseconds: 5000000000\n"
+                "  files:\n  - duration:\n      nanoseconds: 5000000000\n    path: a.mcap\n"
+                "  message_count: 7\n"
+                "  relative_file_paths:\n  - a.mcap\n"
+                "  starting_time:\n    nanoseconds_since_epoch: 1793098575537235934\n"
+                "  storage_identifier: mcap\n"
+                "  topics_with_message_count:\n"
+                "  - message_count: 7\n    topic_metadata:\n      name: /gps/fix\n"
+                "      offered_qos_profiles:\n      - avoid_ros_namespace_conventions: false\n"
+                "        depth: 10\n      serialization_format: cdr\n"
+                "      type: sensor_msgs/msg/NavSatFix\n      type_description_hash: ''\n"
+                "  - message_count: 0\n    topic_metadata:\n      name: /odom\n"
+                "      offered_qos_profiles: []\n      type: nav_msgs/msg/Odometry\n"
+                "  version: 8\n")
+        with mock.patch.dict(sys.modules, {"yaml": None}):
+            info = bag_info._parse_rosbag2_yaml(text)
+        self.assertEqual(info["topics"], [
+            {"name": "/gps/fix", "type": "sensor_msgs/msg/NavSatFix", "count": 7},
+            {"name": "/odom", "type": "nav_msgs/msg/Odometry", "count": 0}])
+        self.assertEqual(info["files"], ["a.mcap"])
+        self.assertEqual(info["duration_ns"], 5000000000)
+        self.assertEqual(info["message_count"], 7)
 
     def test_ingest_enforces_structure_and_keeps_original(self):
         rec = ingest(self.cfg, self.cat, self.vineyard_run(),

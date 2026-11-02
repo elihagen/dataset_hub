@@ -22,7 +22,7 @@ from .marina_backend import Marina
 from .schema import FIELDS, ValidationError, normalize
 
 CSV_COLUMNS = ["import", "source_path", "size_gb", "bag_count", "storage_format",
-               "topic_count", "gps_topics"] + [f.name for f in FIELDS]
+               "topic_count", "gps_topics", "checks"] + [f.name for f in FIELDS]
 
 _DATE_RE = re.compile(r"(20\d{2})[-_.]?(\d{2})[-_.]?(\d{2})")
 
@@ -62,6 +62,8 @@ def scan(root: Path, out_csv: Path, defaults: Optional[Dict[str, str]] = None) -
             "topic_count": len(info["topics"]),
             "gps_topics": " ".join(t["name"] for t in info["topics"]
                                    if t["type"] in bag_info.GPS_TYPES),
+            "checks": " | ".join(f"{w['level'].upper()}: {w['message']}"
+                                 for w in info["warnings"]),
             "date": info["date"] or _guess_date(ds) or "",
             "length_s": info["length_s"] if info["length_s"] is not None else "",
             "has_gps": "" if info["has_gps"] is None else str(info["has_gps"]).lower(),

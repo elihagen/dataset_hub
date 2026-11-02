@@ -8,11 +8,13 @@
   :root {
     --bg: #f6f7f9; --panel: #fff; --text: #1d2330; --muted: #667085; --line: #e3e6eb;
     --accent: #2f6f4f; --accent-soft: #e5f1ea; --danger: #b42318; --danger-soft: #fdecea;
+    --warn: #93600a; --warn-soft: #fdf3dc;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #14171c; --panel: #1c2027; --text: #e6e8ec; --muted: #98a2b3; --line: #2c323c;
       --accent: #6cc196; --accent-soft: #1f3329; --danger: #f97066; --danger-soft: #3a1d1b;
+      --warn: #f2b84b; --warn-soft: #362a12;
     }
   }
   * { box-sizing: border-box; }
@@ -34,6 +36,12 @@
   input.invalid, select.invalid, textarea.invalid { border-color: var(--danger); background: var(--danger-soft); }
   .hint { font-size: 11px; color: var(--muted); margin-top: 2px; }
   .err { font-size: 11px; color: var(--danger); margin-top: 2px; }
+  .checks { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 4px; }
+  .checks li { padding: 6px 10px; border-radius: 6px; font-size: 12px; border-left: 3px solid; }
+  .checks li.error { background: var(--danger-soft); color: var(--danger); }
+  .checks li.warning { background: var(--warn-soft); color: var(--warn); }
+  .checks li.info { background: var(--bg); color: var(--muted); }
+  .checks li.ok { background: var(--accent-soft); color: var(--accent); }
   button.primary, button.secondary { padding: 7px 14px; border-radius: 6px; font: inherit; cursor: pointer; border: 1px solid var(--accent); }
   button.primary { background: var(--accent); color: #fff; }
   button.secondary { background: none; color: var(--accent); }
@@ -287,12 +295,18 @@ $("#inspectBtn").onclick = async () => {
   try {
     const r = await api("/api/inspect", {method: "POST", body: {source: $("#src").value}});
     const i = r.info;
-    $("#facts").innerHTML = `<h2 style="margin-top:16px">Detected</h2><dl class="facts">
+    const LEVELS = {error: "Error", warning: "Warning", info: "Info"};
+    const rank = l => Object.keys(LEVELS).indexOf(l);
+    const issues = [...i.warnings].sort((a, b) => rank(a.level) - rank(b.level));
+    const checks = `<ul class="checks">${issues.some(w => w.level !== "info") ? ""
+      : `<li class="ok">Data checks passed: bag files complete, all sensor topics have data.</li>`}${
+      issues.map(w => `<li class="${esc(w.level)}"><b>${LEVELS[w.level]}:</b> ${esc(w.message)}</li>`).join("")}</ul>`;
+    $("#facts").innerHTML = checks + `<h2 style="margin-top:16px">Detected</h2><dl class="facts">
       <dt>bags</dt><dd>${i.bag_count}</dd><dt>format</dt><dd>${esc(i.storage_format)}</dd>
       <dt>size</dt><dd>${fmtBytes(i.size_bytes)} (${i.file_count} files)</dd>
       <dt>length</dt><dd>${fmtDur(i.length_s)}</dd><dt>date</dt><dd>${esc(i.date)}</dd>
       <dt>GPS</dt><dd>${i.has_gps == null ? "?" : i.has_gps ? "yes" : "no"}</dd></dl>
-      <details><summary>${i.topics.length} topics</summary><div class="mono">${i.topics.map(t => `${esc(t.name)} <span class="hint">${esc(t.type)} · ${t.count}</span>`).join("<br>")}</div></details>`;
+      <details><summary>${i.topics.length} topics</summary><div class="mono">${i.topics.map(t => `${esc(t.name)} <span class="hint" ${t.count ? "" : 'style="color:var(--warn)"'}>${esc(t.type)} · ${t.count}</span>`).join("<br>")}</div></details>`;
     if (!i.bag_count) msg($("#uploadMsg"), "No rosbag/mcap found in this folder.", false);
     setForm(r.prefill); previewPath();
   } catch (e) { msg($("#facts"), e.message, false); }
