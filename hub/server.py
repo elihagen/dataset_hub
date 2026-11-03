@@ -194,6 +194,7 @@ def make_handler(app: App):
                     return 200, {"fields": schema_json(), "values": cat.distinct_values(),
                                  "sensors": cat.sensors(), "path_template": app.cfg.path_template,
                                  "storage_root": str(app.cfg.storage),
+                                 "ingest_mode": app.cfg.ingest_mode,
                                  "browse_roots": list(app.cfg.browse_roots),
                                  "marina": app.cfg.marina_registry if app.marina else None,
                                  "viewer_url": app.cfg.viewer_url,

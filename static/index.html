@@ -192,6 +192,7 @@ document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
 async function loadSchema() {
   SCHEMA = await api("/api/schema");
   buildUploadForm(); buildFilters(); buildBulkField(); renderSensors();
+  $("#mode").value = SCHEMA.ingest_mode || "copy";
   $("#marinaBtn").hidden = !SCHEMA.marina;
   loadStackVersions();
 }
@@ -276,7 +277,10 @@ function previewPath() {
   clearTimeout(previewTimer);
   previewTimer = setTimeout(async () => {
     const r = await api("/api/preview_path", {method: "POST", body: {meta: readForm()}});
-    $("#pathPreview").textContent = r.path || "missing: " + Object.keys(r.missing).join(", ");
+    // register keeps the data where it is, so the template path doesn't apply
+    const inPlace = $("#mode").value === "register" && $("#src").value;
+    $("#pathPreview").textContent = !r.path ? "missing: " + Object.keys(r.missing).join(", ")
+      : inPlace ? $("#src").value + " (in place)" : r.path;
     $("#uploadBtn").disabled = !r.path || !$("#src").value;
   }, 200);
 }
@@ -290,6 +294,8 @@ async function browse(path) {
     $("#browser").querySelectorAll("div").forEach(el => el.onclick = () => browse(el.dataset.p));
   } catch (e) { msg($("#facts"), e.message, false); }
 }
+
+$("#mode").onchange = previewPath;
 
 $("#inspectBtn").onclick = async () => {
   try {

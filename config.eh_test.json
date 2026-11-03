@@ -1,0 +1,8 @@
+{
+  "storage_root": "./data/eh_test_storage",
+  "db_path": "./data/eh_test.sqlite",
+  "ingest_mode": "register",
+  "marina_registry": null,
+  "browse_roots": ["/Volumes/datasets/eh_datasets/robot_data"],
+  "port": 8095
+}
